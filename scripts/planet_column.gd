@@ -1,0 +1,337 @@
+# planet_column.gd
+class_name Column
+extends RefCounted
+
+const SIGMA = 5.670374419e-8 # W / (m^2 * K^4) - Stefan-Boltzmann constant
+
+var DEBUG_COLINFO = false
+var debug_lat = 7
+var debug_lon = 0
+
+# --- Indices and Links ---
+var lat_index: int
+var lon_index: int
+var linked_mesh: MeshInstance3D
+var linked_area: Area3D
+var center_normal: Vector3
+
+# --- References ---
+var planet: Node3D
+var sim: Node3D
+
+# --- Simulation State ---
+# incoming_flux variable removed as it wasn't actively used in the calculation loop
+var star_pos: Vector3 = Vector3.ZERO
+var layers: Array[AtmosLayer]
+
+var prev_surface_temp: float
+var prev_layer_temps: Array[float]
+
+
+# --- Surface Physical Properties ---
+# surface_area removed - calculations are now per unit area
+var surface_temp: float = 288.0 # K
+var surface_albedo: float = 0.3
+var surface_density: float = 2700.0 # kg/m^3
+var surface_thermal_conductivity: float = 2.5 # W/(m*K)
+var surface_heat_capacity: float = 850.0 # J/(kg*K) - Specific heat
+var surface_emissivity: float = 0.95
+
+
+# --- Initialization ---
+func _init():
+	layers = []
+	prev_layer_temps = []
+	prev_surface_temp = surface_temp
+
+
+# --- Layer Access Helpers ---
+# ... (get_num_layers, get_layer, get_surface_layer, get_top_layer - unchanged) ...
+func get_num_layers() -> int:
+	return layers.size()
+
+func get_layer(i: int) -> AtmosLayer:
+	if i >= 0 and i < layers.size():
+		return layers[i]
+	return null
+
+func get_surface_layer() -> AtmosLayer:
+	return get_layer(0)
+
+func get_top_layer() -> AtmosLayer:
+	if layers.is_empty():
+		return null
+	return get_layer(layers.size() - 1)
+
+# --- Main Simulation Step ---
+func simulate_column(dt: float):
+	if lat_index == debug_lat and lon_index == debug_lon and DEBUG_COLINFO:
+		print("Col %d,%d - dt: " % [debug_lat, debug_lon], dt)
+	# --- 0. Pre-computation & State Storage ---
+	var num_layers = layers.size()
+
+	prev_surface_temp = surface_temp
+	if prev_layer_temps.size() != num_layers:
+		prev_layer_temps.resize(num_layers)
+	for i in range(num_layers):
+		if layers[i] is AtmosLayer:
+			prev_layer_temps[i] = layers[i].temperature
+		else:
+			printerr("Column %d,%d: Invalid object in layers array at index %d" % [lat_index, lon_index, i])
+			prev_layer_temps[i] = 0.0
+
+	# Update layer thermodynamics based on previous step's T/P
+	for layer in layers:
+		if layer is AtmosLayer:
+			layer.update_thermodynamics() # Calculates heat_capacity_per_area etc.
+	
+	if lat_index == debug_lat and lon_index == debug_lon and num_layers > 0 and DEBUG_COLINFO:
+		var layer0 : AtmosLayer = layers[0]
+		if layer0 is AtmosLayer:
+			print("Col %d,%d Layer 0 - Eff Therm Abs: " % [debug_lat, debug_lon], layer0.effective_thermal_absorptivity)
+			print("Col %d,%d Layer 0 - Temp (Prev): " % [debug_lat, debug_lon], prev_layer_temps[0]) # Check temp used for emission
+			# Also print the calculated emission for confirmation
+			print("Col %d,%d Layer 0 - Emission Flux: " % [debug_lat, debug_lon], layer0.get_thermal_emission_flux())
+
+	if lat_index == debug_lat and lon_index == debug_lon and num_layers > 0 and DEBUG_COLINFO:
+		var layer0 : AtmosLayer = layers[0]
+		if layer0 is AtmosLayer:
+			print("Col %d,%d Layer 0 - Density: " % [debug_lat, debug_lon], layer0.density)
+			print("Col %d,%d Layer 0 - Thickness: " % [debug_lat, debug_lon], layer0.layer_thickness)
+			print("Col %d,%d Layer 0 - Specific Heat: " % [debug_lat, debug_lon], layer0.effective_specific_heat)
+			print("Col %d,%d Layer 0 - Col HC/Area: " % [debug_lat, debug_lon], layer0.column_heat_capacity_per_area)
+	
+	var top_solar_flux: float = current_flux_angled() # W/m^2
+
+	# <<< CHANGE: Initialize net FLUX accumulators (W/m^2) >>>
+	var net_flux_surface: float = 0.0
+	var net_flux_layers: Array[float] = []
+	if net_flux_layers.size() != num_layers:
+		net_flux_layers.resize(num_layers)
+	net_flux_layers.fill(0.0)
+
+
+	# --- 1. Solar Radiation Pass (Top-Down) ---
+	var current_solar_flux_down = top_solar_flux
+	if num_layers > 0:
+		for i in range(num_layers - 1, -1, -1):
+			var layer: AtmosLayer = layers[i]
+			if layer is AtmosLayer:
+				var absorbed_solar_flux = layer.get_absorbed_flux(current_solar_flux_down, "solar") # W/m^2
+				# <<< CHANGE: Add FLUX directly >>>
+				net_flux_layers[i] += absorbed_solar_flux
+				current_solar_flux_down -= absorbed_solar_flux
+
+	var surface_solar_absorbed_flux = current_solar_flux_down * (1.0 - surface_albedo) # W/m^2
+	# <<< CHANGE: Add FLUX directly >>>
+	net_flux_surface += surface_solar_absorbed_flux
+
+
+	# --- 2. Thermal Radiation Pass (Surface & Atmosphere Upwards) ---
+	var current_thermal_flux_up = 0.0
+	var surface_emission_flux = 0.0
+	if prev_surface_temp > 0.0:
+		surface_emission_flux = surface_emissivity * SIGMA * pow(prev_surface_temp, 4) # W/m^2
+		current_thermal_flux_up = surface_emission_flux
+		# <<< CHANGE: Subtract FLUX directly >>>
+		net_flux_surface -= surface_emission_flux
+
+	if num_layers > 0:
+		for i in range(num_layers):
+			var layer: AtmosLayer = layers[i]
+			if layer is AtmosLayer:
+				var layer_emission_flux = layer.get_thermal_emission_flux() # W/m^2
+				var layer_emitted_up_flux = 0.5 * layer_emission_flux
+				# var layer_emitted_down_flux = 0.5 * layer_emission_flux # Not needed in this pass
+
+				var absorbed_thermal_up_flux = layer.get_absorbed_flux(current_thermal_flux_up, "thermal") # W/m^2
+				# <<< CHANGE: Add FLUX directly >>>
+				net_flux_layers[i] += absorbed_thermal_up_flux
+				# <<< CHANGE: Subtract FLUX directly >>>
+				net_flux_layers[i] -= layer_emitted_up_flux
+
+				current_thermal_flux_up = (current_thermal_flux_up - absorbed_thermal_up_flux) + layer_emitted_up_flux
+
+
+	# --- 3. Thermal Radiation Pass (Atmosphere Downwards) ---
+	var current_thermal_flux_down = 0.0
+	if num_layers > 0:
+		for i in range(num_layers - 1, -1, -1):
+			var layer: AtmosLayer = layers[i]
+			if layer is AtmosLayer:
+				var layer_emission_flux = 0.0
+				if prev_layer_temps[i] > 0.0:
+					layer_emission_flux = layer.get_thermal_emission_flux()
+				var layer_emitted_down_flux = 0.5 * layer_emission_flux # W/m^2
+
+				var absorbed_thermal_down_flux = layer.get_absorbed_flux(current_thermal_flux_down, "thermal") # W/m^2
+				# <<< CHANGE: Add FLUX directly >>>
+				net_flux_layers[i] += absorbed_thermal_down_flux
+				# <<< CHANGE: Subtract FLUX directly >>>
+				net_flux_layers[i] -= layer_emitted_down_flux
+
+				current_thermal_flux_down = (current_thermal_flux_down - absorbed_thermal_down_flux) + layer_emitted_down_flux
+
+	var surface_thermal_absorbed_flux = current_thermal_flux_down * surface_emissivity # W/m^2
+	# <<< CHANGE: Add FLUX directly >>>
+	net_flux_surface += surface_thermal_absorbed_flux
+
+	if lat_index == debug_lat and lon_index == debug_lon and DEBUG_COLINFO: # Print for one column
+		print("Col %d,%d - Top Solar Flux: " % [debug_lat, debug_lon], top_solar_flux)
+		print("Col %d,%d - Net Flux Surface: " % [debug_lat, debug_lon], net_flux_surface)
+		print("Col %d,%d - Surface Thermal Absorbed Flux: " % [debug_lat, debug_lon], surface_thermal_absorbed_flux)
+		print("Col %d,%d - Surface Solar Absorbed Flux: " % [debug_lat, debug_lon], surface_solar_absorbed_flux)
+		print("Col %d,%d - Surface Emission Flux: " % [debug_lat, debug_lon], surface_emission_flux)
+		if num_layers > 0:
+			print("Col %d,%d - Net Flux Layer 0: " % [debug_lat, debug_lon], net_flux_layers[0])
+	
+	
+	# --- 4. Temperature Update ---
+	# --- Add Surface-Air Direct Heat Transfer ---
+
+	var direct_transfer_flux = 0.0
+	if num_layers > 0:
+		direct_transfer_flux = sim.K_heat_transfer * (prev_surface_temp - prev_layer_temps[0]) # Positive = Surf to Air
+
+	# Adjust net fluxes (add this energy transfer to the calculated radiative fluxes)
+	net_flux_surface -= direct_transfer_flux # Surface loses energy if hotter than air
+	if num_layers > 0:
+		net_flux_layers[0] += direct_transfer_flux # Layer 0 gains energy if surface is hotter
+
+
+	# --- Update Layer Temperatures using combined radiative+direct flux ---
+	if num_layers > 0:
+		for i in range(num_layers):
+			var layer: AtmosLayer = layers[i]
+			if layer is AtmosLayer:
+				if layer.column_heat_capacity_per_area > 1e-6:
+					# Use the correct net flux for this layer
+					var final_net_flux = net_flux_layers[i] # Already includes direct flux for i=0
+					var delta_T_layer = (final_net_flux * dt) / layer.column_heat_capacity_per_area
+					layer.temperature += delta_T_layer
+					layer.temperature = max(layer.temperature, 1.0) # Clamp min temp
+
+	# --- Update Surface Temperature using combined radiative+direct flux ---
+	var surface_col_heat_cap_per_area = calculate_surface_column_heat_capacity_per_area()
+	if surface_col_heat_cap_per_area > 1e-6:
+		# Use the correct net flux for the surface
+		var final_net_flux_surf = net_flux_surface # Already includes direct flux
+		var delta_T_surface = (final_net_flux_surf * dt) / surface_col_heat_cap_per_area
+		surface_temp += delta_T_surface
+		surface_temp = max(surface_temp, 1.0) # Clamp min temp
+
+	# --- 8. Visual Update --- (Unchanged)
+	if linked_mesh and linked_mesh.material_override:
+		linked_mesh.material_override.albedo_color = temp_to_color(surface_temp)
+
+# --- Helper Functions ---
+
+# ... (temp_to_color - use the improved one from previous step) ...
+func temp_to_color(temp: float) -> Color:
+	# Color gradient points (Temperature thresholds)
+	var t_min = 200.0  # Deep cold (Adjust as needed)
+	var t_low = 273.15 # Freezing point
+	var t_mid = 300.0  # Warm
+	var t_high = 373.15 # Boiling point
+	var t_max = 600.0  # Very hot (Adjust as needed)
+
+	# Corresponding colors (Example: Blue -> Cyan -> Green -> Yellow -> Red)
+	var c_min = Color.BLUE_VIOLET
+	var c_low = Color.SKY_BLUE
+	var c_mid = Color.SPRING_GREEN
+	var c_high = Color.YELLOW
+	var c_max = Color.RED
+
+	var final_color: Color
+
+	# Clamp input temperature to the defined range
+	temp = clamp(temp, t_min, t_max)
+
+	# Lerp between colors based on temperature range
+	if temp <= t_low:
+		var ratio = inverse_lerp(t_min, t_low, temp)
+		final_color = c_min.lerp(c_low, ratio)
+	elif temp <= t_mid:
+		var ratio = inverse_lerp(t_low, t_mid, temp)
+		final_color = c_low.lerp(c_mid, ratio)
+	elif temp <= t_high:
+		var ratio = inverse_lerp(t_mid, t_high, temp)
+		final_color = c_mid.lerp(c_high, ratio)
+	else: # temp <= t_max
+		var ratio = inverse_lerp(t_high, t_max, temp)
+		final_color = c_high.lerp(c_max, ratio)
+
+	# Set alpha (opacity) - maybe keep it constant?
+	final_color.a = 0.6 # Example fixed alpha
+
+	return final_color
+
+
+# ... (current_flux_angled - ensure it's correct and uses planet.global_flux) ...
+# Calculates the incoming solar flux hitting the top of the atmosphere
+# based on the angle between the column's normal and the star direction.
+func current_flux_angled() -> float:
+	
+	var global_center = planet.global_transform * center_normal
+	var normal = (global_center - planet.global_transform.origin).normalized()
+	var star_dir = (star_pos - planet.global_transform.origin).normalized()
+	var cos_incidence = normal.dot(star_dir)
+	
+	
+	if cos_incidence > 0.0:
+		return planet.global_flux * cos_incidence
+	else:
+		return  0.0
+
+# <<< CHANGE: Renamed function and updated calculation logic >>>
+# Calculates the effective thermal heat capacity PER UNIT AREA of the surface layer [J / (K * m^2)]
+func calculate_surface_column_heat_capacity_per_area() -> float:
+	if not is_instance_valid(planet) or not is_instance_valid(planet.sim_manager):
+		printerr("Column %d,%d: Invalid planet or sim_manager reference." % [lat_index, lon_index])
+		return 1e-6 # Return small non-zero default
+
+	var day_length_seconds = planet.sim_manager.day_length
+	if day_length_seconds <= 1e-6: # Check against small epsilon
+		printerr("Column %d,%d: Invalid day length (%f) for thermal mass calc." % [lat_index, lon_index, day_length_seconds])
+		# Use a proxy frequency for very slow rotation? Or return a fixed large capacity?
+		# For now, return a small default to prevent division by zero but signal an issue.
+		return 1e-6
+
+	var freq = TAU / day_length_seconds
+
+	if surface_density <= 1e-6 or surface_heat_capacity <= 1e-6 or surface_thermal_conductivity < 0:
+		printerr("Column %d,%d: Invalid surface properties (Density: %f, Cp: %f, k: %f)." % [lat_index, lon_index, surface_density, surface_heat_capacity, surface_thermal_conductivity])
+		return 1e-6 # Return small non-zero default
+
+	var thermal_diffusivity = surface_thermal_conductivity / (surface_density * surface_heat_capacity)
+	if lat_index == debug_lat and lon_index == debug_lon and DEBUG_COLINFO: # Print only for one specific column initially
+		print("Col %d,%d - Freq: " % [debug_lat, debug_lon], freq)
+		print("Col %d,%d - Diffusivity: " % [debug_lat, debug_lon], thermal_diffusivity)
+	var thermal_skin_depth = 0.0
+	# Handle potential division by zero or sqrt of negative if diffusivity is somehow negative (shouldn't be)
+	if thermal_diffusivity >= 0 and freq > 1e-9: # Check frequency against epsilon
+		thermal_skin_depth = sqrt(2.0 * thermal_diffusivity / freq)
+	else:
+		# Handle slow rotation / zero diffusivity case (e.g., use a max depth or proxy)
+		printerr("Column %d,%d: Handling zero/negative diffusivity or zero frequency." % [lat_index, lon_index])
+		# Example: Use a max depth related to orbital period or a fixed value?
+		# For now, minimal depth to avoid large capacity from dominating.
+		thermal_skin_depth = 0.01 # meters - very small depth as fallback
+	
+	if lat_index == debug_lat and lon_index == debug_lon and DEBUG_COLINFO:
+		print("Col %d,%d - Skin Depth: " % [debug_lat, debug_lon], thermal_skin_depth)
+		
+	thermal_skin_depth = max(thermal_skin_depth, 0.0)
+
+	# Column Mass Density = surface density * effective depth (kg / m^2)
+	var surface_column_mass_density = surface_density * thermal_skin_depth
+	
+	
+	# Column Heat Capacity per Area = Column Mass Density * Specific Heat (J / (K * m^2))
+	var surface_column_hc_per_area = surface_column_mass_density * surface_heat_capacity
+	
+	if lat_index == debug_lat and lon_index == debug_lon and DEBUG_COLINFO:
+		print("Col %d,%d - Surf Col Mass Density: " % [debug_lat, debug_lon], surface_column_mass_density)
+		print("Col %d,%d - Surf Col HC/Area: " % [debug_lat, debug_lon], surface_column_hc_per_area)
+	# Ensure result is positive to avoid issues in temp update
+	return max(surface_column_hc_per_area, 1e-6)

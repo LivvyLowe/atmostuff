@@ -1,0 +1,162 @@
+extends Node3D
+
+const EARTH_RADIUS_METERS = 6.371e6
+
+# We'll store references to each column MeshInstance3D in a 2D array
+var column_instances: Array = []
+var column_center_matrix: Array = []
+var DEBUG_GENERATE_COLUMN_NORMAL_RAYCASTS = false
+
+# Internal variables to hold radius and grid sizes
+var radius_offset = -0.1
+var planet_radius: float = 1.0
+var lat_bands: int = 6
+var lon_bands: int = 6
+
+func setup_columns_grid(p_radius: float, p_lat_bands: int, p_lon_bands: int) -> void:
+	planet_radius = p_radius
+	lat_bands = p_lat_bands
+	lon_bands = p_lon_bands
+	_generate_columns()
+
+
+# Public helper to retrieve a specific column MeshInstance3D by lat-lon indices
+func get_column_instance(lat_i: int, lon_i: int) -> MeshInstance3D:
+	if lat_i < 0 or lat_i >= lat_bands:
+		return null
+	if lon_i < 0 or lon_i >= lon_bands:
+		return null
+	return column_instances[lat_i][lon_i]
+
+func column_count():
+	var lat_n = column_instances.size()
+	var lon_n = column_instances[0].size()
+	return lat_n*lon_n
+
+# --- Private methods ---
+
+func _generate_columns() -> void:
+	# Clean up existing child nodes if regenerating
+	for child in get_children():
+		remove_child(child)
+		child.queue_free()
+
+	# Create a container to hold the sector meshes
+	var columns_container = Node3D.new()
+	columns_container.name = "ColumnsContainer"
+	add_child(columns_container)
+
+	# Resize our local 2D array for storing columns
+	column_instances.clear()
+	column_instances.resize(lat_bands)
+	for i in range(lat_bands):
+		column_instances[i] = []
+		column_instances[i].resize(lon_bands)
+	
+	var d_lambda = TAU / lon_bands
+	var radius_meters = planet_radius * EARTH_RADIUS_METERS
+	
+
+	# Generate each lat-lon patch as a separate MeshInstance3D
+	for lat_i in range(lat_bands):
+		var d_phi = PI / lat_bands
+		var phi1 = -PI / 2.0 + lat_i * d_phi
+		var phi2 = phi1 + d_phi
+		var band_area = radius_meters * radius_meters * d_lambda * (sin(phi2) - sin(phi1))
+		for lon_i in range(lon_bands):
+			var sector_mesh = _create_sphere_segment(lat_i, lon_i, lat_bands, lon_bands, planet_radius+radius_offset)
+			if sector_mesh:
+				
+				var area = Area3D.new()
+				area.collision_layer = 1
+				area.set_meta("lat_index", lat_i)
+				area.set_meta("lon_index", lon_i)
+				area.set_meta("surface_area", band_area)
+
+				
+				var mesh_instance = MeshInstance3D.new()
+				mesh_instance.mesh = sector_mesh
+				var mat = StandardMaterial3D.new()
+				mat.albedo_color = Color(0,0,0)
+				mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				mesh_instance.material_override = mat
+				mesh_instance.name = "Column_%d_%d" % [lat_i, lon_i]
+				
+
+				# Optional: collision shape for picking / raycasting
+				var shape = ConcavePolygonShape3D.new()
+				if sector_mesh.get_surface_count() > 0:
+					var arr = sector_mesh.surface_get_arrays(0)
+					var verts = arr[Mesh.ARRAY_VERTEX]
+					shape.data = verts
+				var collision = CollisionShape3D.new()
+				
+				collision.shape = shape
+				
+
+				# Attach it to the container
+				area.add_child(mesh_instance)
+				area.add_child(collision)
+				columns_container.add_child(area)
+				
+				# Store in the 2D array
+				column_instances[lat_i][lon_i] = area
+
+
+# Creates a minimal lat-lon patch using SurfaceTool, but WITHOUT generating normals or lighting
+func _create_sphere_segment(lat_i: int, lon_i: int, total_lats: int, total_lons: int, radius: float) -> ArrayMesh:
+	# Convert grid indices to lat/lon in radians
+	var lat0 = lerp(-PI * 0.5, PI * 0.5, float(lat_i) / float(total_lats))
+	var lat1 = lerp(-PI * 0.5, PI * 0.5, float(lat_i + 1) / float(total_lats))
+	var lon0 = lerp(-PI, PI, float(lon_i) / float(total_lons))
+	var lon1 = lerp(-PI, PI, float(lon_i + 1) / float(total_lons))
+
+	# Compute 4 corner vertices
+	var v00 = _sphere_to_xyz(lat0, lon0, radius)
+	var v01 = _sphere_to_xyz(lat0, lon1, radius)
+	var v10 = _sphere_to_xyz(lat1, lon0, radius)
+	var v11 = _sphere_to_xyz(lat1, lon1, radius)
+
+	# Use SurfaceTool for simpler array handling
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	
+	# Triangle 1 (v00 -> v10 -> v01)
+	st.add_vertex(v00)
+	st.add_vertex(v01)
+	st.add_vertex(v10)
+
+	# Triangle 2 (v10 -> v11 -> v01)
+	st.add_vertex(v10)
+	st.add_vertex(v01)
+	st.add_vertex(v11)
+	
+	var center = (v00 + v01 + v10 + v11) / 4.0
+	_update_column_center_matrix(lat_i, lon_i, center)
+	var final_mesh = st.commit()
+	return final_mesh
+
+
+# Converts (lat_rad, lon_rad, planet_radius) to a 3D position on the sphere
+func _sphere_to_xyz(lat_rad: float, lon_rad: float, radius: float) -> Vector3:
+	var x = radius * cos(lat_rad) * cos(lon_rad)
+	var y = radius * sin(lat_rad)
+	var z = radius * cos(lat_rad) * sin(lon_rad)
+	return Vector3(x, y, z)
+
+func _update_column_center_matrix(lat_i: int, lon_i: int, center: Vector3):
+	var lat_size = column_center_matrix.size()
+	if lat_size <= lat_i:
+		column_center_matrix.resize(lat_i+1)
+	if !(column_center_matrix[lat_i] is Array):
+		column_center_matrix[lat_i] = []
+	var lon_size = column_center_matrix[lat_i].size()
+	if lon_size <= lon_i:
+		column_center_matrix[lat_i].resize(lon_i+1)
+	
+	column_center_matrix[lat_i][lon_i] = center
+	if DEBUG_GENERATE_COLUMN_NORMAL_RAYCASTS:
+		var testray = RayCast3D.new()
+		testray.target_position = center * 1.5
+		add_child(testray)

@@ -1,0 +1,149 @@
+extends Node3D
+
+@onready var sim_manager = get_parent()
+@onready var planet_mesh = $MeshInstance3D
+@onready var planet_column_grid = $MeshInstance3D/SectorGrid
+
+const ENGINE_METERS_PER_EARTH_RADIUS:float = 0.5
+var mass:float = 1.0
+var radius:float = 1.0
+var surface_gravity:float = 1.0
+var star_distance:float = 149597870700.0
+var L_sun: float = 3.828e26
+var global_flux:float = L_sun / (4.0 * PI * star_distance**2)
+
+# Define altitude ranges for layers (example)
+var layer_height = 1000.0 # meters, e.g., 10km layers
+var base_altitude = 0.0
+var initial_surface_temp = 288.0
+var initial_surface_pressure = 101325.0
+var lapse_rate = -0.0065 # K/m (Standard atmosphere approx)
+var scale_height = 8500.0 # meters (Approx for Earth air)
+# Default initial composition (adjust as needed)
+var initial_composition = { "N2": 0.75, "O2": 0.21, "Ar": 0.009, "CO2": 0.0004, "H2O": 0.03 }
+
+var lat_bands: int = 30
+var lon_bands: int = 30
+var atmos_layers: int = 5
+
+var columns: Array = []
+
+func _ready() -> void:
+	
+	regen_planet()
+
+
+func _process(delta: float) -> void:
+	pass
+	
+
+func simulate(dt):
+
+	var dr = 360.0/(sim_manager.day_length)*dt
+	do_rotation(dr)
+	
+	for lat in columns:
+		for lon in lat:
+			lon.simulate_column(dt)
+
+#WARNING: THIS RESETS THE PLANET (mostly)
+func set_planet_size(m, r,):
+	mass = m
+	radius = r
+	surface_gravity = get_gravity(mass, radius)
+	planet_mesh.mesh.radius = radius*ENGINE_METERS_PER_EARTH_RADIUS
+	planet_mesh.mesh.height = radius*ENGINE_METERS_PER_EARTH_RADIUS*2
+	planet_column_grid.setup_columns_grid(radius, lat_bands, lon_bands)
+	generate_grid(lat_bands,lon_bands,atmos_layers)
+
+func regen_planet():
+	set_planet_size(mass,radius)
+
+func get_gravity(mass, radius):
+	return (mass)/(radius**2)
+
+func do_rotation(degrees):
+	rotation_degrees.y += degrees
+
+func generate_grid(lat_count, lon_count, vert_count):
+	lat_bands = lat_count
+	lon_bands = lon_count
+	atmos_layers = vert_count
+	
+	columns.clear()
+	columns.resize(lat_bands)
+	
+	for lat in range(lat_bands):
+			var lon_array = []
+			lon_array.resize(lon_bands)
+			columns[lat] = lon_array
+			for lon in range(lon_bands):
+				var col = Column.new()
+				
+				col.lat_index = lat
+				col.lon_index = lon
+				col.planet = self
+				col.linked_area = get_column_grid_area3D(lat,lon)
+				col.linked_mesh = get_column_grid_mesh(lat,lon)
+				#col.surface_area = col.linked_area.get_meta("surface_area")
+				col.center_normal = planet_column_grid.column_center_matrix[lat][lon]
+				
+				# Create each atmosphere layer for this column
+				if atmos_layers > 0:
+					col.layers.resize(atmos_layers) # Pre-allocate array
+					for v in range(atmos_layers):
+						var layer = AtmosLayer.new()
+
+						# Estimate altitude range
+						var alt_min = base_altitude + v * layer_height
+						var alt_max = alt_min + layer_height
+						var layer_center_alt = alt_min + layer_height / 2.0
+						var alt_range = Vector2(alt_min, alt_max)
+						
+						# Estimate initial temp/pressure (VERY basic approximations)
+						var initial_temp = initial_surface_temp + lapse_rate * layer_center_alt
+						initial_temp = max(initial_temp, 10.0) # Avoid zero Kelvin
+						var initial_pressure = initial_surface_pressure * exp(-layer_center_alt / scale_height)
+						initial_pressure = max(initial_pressure, 1.0) # Avoid zero pressure
+
+						layer.initialize_layer(initial_composition, initial_temp, initial_pressure, alt_range)
+						layer.column = col
+						# Link layers (you had similar logic before)
+						if v > 0:
+							var prev_layer = col.layers[v-1]
+							layer.below_layer = prev_layer
+							prev_layer.above_layer = layer
+
+						col.layers[v] = layer # Assign to the pre-allocated array slot
+				
+				lon_array[lon] = col
+
+func get_column_grid_area3D(lat,lon):
+	var cell_mesh = planet_column_grid.column_instances[lat][lon]
+	return cell_mesh
+
+func get_column_grid_mesh(lat,lon):
+	var area = get_column_grid_area3D(lat,lon)
+	return area.get_child(0)
+
+func find_global_flux(distance, luminosity):
+	##LUMINOSITY SHOULD BE IN SOLAR LUMINOSITY!!!!!
+	var flux = (luminosity*L_sun)/(4.0 * PI * distance*distance)
+	return flux
+
+func global_surface_column_parameter_update(temp = null, albedo = null, density= null, conductivity= null, c= null, emissivity= null):
+	for lat in columns:
+		for col in lat:
+			
+			if temp != null:
+				col.surface_temp = temp
+			if albedo != null:
+				col.surface_albedo = albedo
+			if density != null:
+				col.surface_density = density
+			if conductivity != null:
+				col.surface_thermal_conductivity = conductivity
+			if c != null:
+				col.surface_heat_capacity = c
+			if emissivity != null:
+				col.surface_emissivity = emissivity

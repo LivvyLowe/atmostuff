@@ -1,0 +1,132 @@
+extends Node3D
+
+@onready var sim_manager = get_parent()
+@onready var planet_mesh = $MeshInstance3D
+@onready var planet_column_grid = $MeshInstance3D/SectorGrid
+
+const ENGINE_METERS_PER_EARTH_RADIUS:float = 0.5
+var mass:float = 1.0
+var radius:float = 1.0
+var surface_gravity:float = 1.0
+var star_distance:float = 149597870700.0
+var L_sun: float = 3.828e26
+var global_flux:float = L_sun / (4.0 * PI * star_distance**2)
+
+var lat_bands: int = 12
+var lon_bands: int = 12
+var atmos_layers: int = 3
+
+var columns: Array = []
+
+func _ready() -> void:
+	
+	regen_planet()
+
+
+func _process(delta: float) -> void:
+	pass
+	
+
+func simulate(dt):
+
+	var dr = 360.0/(sim_manager.day_length)*dt
+	do_rotation(dr)
+	
+	for lat in columns:
+		for lon in lat:
+			lon.simulate_column(dt)
+
+#WARNING: THIS RESETS THE PLANET (mostly)
+func set_planet_size(m, r,):
+	mass = m
+	radius = r
+	surface_gravity = get_gravity(mass, radius)
+	planet_mesh.mesh.radius = radius*ENGINE_METERS_PER_EARTH_RADIUS
+	planet_mesh.mesh.height = radius*ENGINE_METERS_PER_EARTH_RADIUS*2
+	planet_column_grid.setup_columns_grid(radius, lat_bands, lon_bands)
+	generate_grid(lat_bands,lon_bands,atmos_layers)
+
+func regen_planet():
+	set_planet_size(mass,radius)
+
+func get_gravity(mass, radius):
+	return (mass)/(radius**2)
+
+func do_rotation(degrees):
+	rotation_degrees.y += degrees
+
+func generate_grid(lat_count, lon_count, vert_count):
+	lat_bands = lat_count
+	lon_bands = lon_count
+	atmos_layers = vert_count
+	
+	columns.clear()
+	columns.resize(lat_bands)
+	
+	for lat in range(lat_bands):
+			var lon_array = []
+			lon_array.resize(lon_bands)
+			columns[lat] = lon_array
+			for lon in range(lon_bands):
+				var col = Column.new()
+				
+				col.lat_index = lat
+				col.lon_index = lon
+				col.planet = self
+				col.linked_area = get_column_grid_area3D(lat,lon)
+				col.linked_mesh = get_column_grid_mesh(lat,lon)
+				col.surface_area = col.linked_area.get_meta("surface_area")
+				col.center_normal = planet_column_grid.column_center_matrix[lat][lon]
+				# Create each atmosphere layer for this column
+				if atmos_layers > 0:
+					for v in range(atmos_layers):
+						var layer = AtmosLayer.new()
+						# Optionally define altitude ranges or default temps
+						layer.altitude_range = Vector2(1000.0 * float(v), 1000.0 * float(v + 1))
+						
+						if v == 0:
+							# This is the surface. You could store surface data here.
+							layer.temperature = col.surface_temp
+							# ... set albedo or composition if you like
+							
+						else:
+							# Some default for upper layers
+							layer.temperature = col.surface_temp - 10.0 * float(v)
+							var prev_layer = col.layers[v-1]
+							layer.below_layer = prev_layer
+							prev_layer.above_layer = layer
+							
+						
+						col.layers.append(layer)
+				
+				lon_array[lon] = col
+
+func get_column_grid_area3D(lat,lon):
+	var cell_mesh = planet_column_grid.column_instances[lat][lon]
+	return cell_mesh
+
+func get_column_grid_mesh(lat,lon):
+	var area = get_column_grid_area3D(lat,lon)
+	return area.get_child(0)
+
+func find_global_flux(distance, luminosity):
+	##LUMINOSITY SHOULD BE IN SOLAR LUMINOSITY!!!!!
+	var flux = (luminosity*L_sun)/(4.0 * PI * distance*distance)
+	return flux
+
+func global_surface_column_parameter_update(temp = null, albedo = null, density= null, conductivity= null, c= null, emissivity= null):
+	for lat in columns:
+		for col in lat:
+			
+			if temp != null:
+				col.surface_temp = temp
+			if albedo != null:
+				col.surface_albedo = albedo
+			if density != null:
+				col.surface_density = density
+			if conductivity != null:
+				col.surface_thermal_conductivity = conductivity
+			if c != null:
+				col.surface_heat_capacity = c
+			if emissivity != null:
+				col.surface_emissivity = emissivity

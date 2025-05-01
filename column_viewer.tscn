@@ -1,0 +1,105 @@
+[gd_scene load_steps=2 format=3 uid="uid://5ey1akcxm14t"]
+
+[ext_resource type="Script" path="res://scripts/column_viewer.gd" id="1_hbfsi"]
+
+[node name="ColumnViewer" type="PanelContainer"]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -250.0
+grow_horizontal = 0
+grow_vertical = 2
+size_flags_horizontal = 8
+size_flags_vertical = 3
+script = ExtResource("1_hbfsi")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="PlanetColumn" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Planet Column: "
+
+[node name="Label" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Lat:"
+
+[node name="Label2" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Lon:"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="GlobalFluxLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Global Flux:"
+
+[node name="ColumnFluxLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Column Flux:"
+
+[node name="TempLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Temperature:"
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+visible = false
+layout_mode = 2
+text = "Surface Parameters Override"
+
+[node name="AlbedoContainer" type="HBoxContainer" parent="VBoxContainer"]
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/AlbedoContainer"]
+layout_mode = 2
+text = "Albedo"
+
+[node name="AlbedoSpinner" type="SpinBox" parent="VBoxContainer/AlbedoContainer"]
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.12
+
+[node name="HeatCapacityContainer" type="HBoxContainer" parent="VBoxContainer"]
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/HeatCapacityContainer"]
+layout_mode = 2
+text = "Heat Capacity"
+
+[node name="HeatCapacity" type="SpinBox" parent="VBoxContainer/HeatCapacityContainer"]
+layout_mode = 2
+max_value = 6000.0
+step = 0.1
+value = 700.0
+
+[node name="HSeparator3" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Atmosphere Columns"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LayersContainer" type="VBoxContainer" parent="VBoxContainer/ScrollContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/ScrollContainer/LayersContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+text = "
+"

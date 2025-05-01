@@ -1,0 +1,28 @@
+extends PanelContainer
+
+@onready var lat_label = $VBoxContainer/HBoxContainer/Label
+@onready var lon_label = $VBoxContainer/HBoxContainer/Label2
+@onready var sim_manager = get_parent()
+@onready var planet = get_node("/root/SimulationManager/Planet3D")
+
+var current_col: Column
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	pass # Replace with function body.
+
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(delta: float) -> void:
+	
+	if current_col is Column:
+		$VBoxContainer/GlobalFluxLabel.text = "Global Flux: " + str(planet.global_flux)
+		$VBoxContainer/ColumnFluxLabel.text = "Column Flux: " + str(current_col.incoming_flux)
+		$VBoxContainer/SurfaceAreaLabel.text = "Surface Area: " + str(current_col.surface_area)
+		$VBoxContainer/TempLabel.text = "Temperature: " + str(current_col.surface_temp) + " K"
+
+func update_selected_column(col: Column):
+	current_col = col
+	lat_label.text = "Lat: " + str(col.lat_index)
+	lon_label.text = "Lon: " + str(col.lon_index)
+	

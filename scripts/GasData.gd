@@ -1,0 +1,85 @@
+
+class_name GasData
+extends RefCounted
+
+# Dictionary storing properties for each gas.
+# Keys: Gas formula (String)
+# Values: Dictionary with properties
+const GAS_PROPERTIES: Dictionary = {
+	"N2": {
+		"name": "Nitrogen",
+		"molar_mass": 0.028014,  # kg/mol
+		"specific_heat": 1040.0,  # J/(kg*K) - Cp at ~300K
+		"thermal_absorptivity": 0.001, # Effectively transparent to thermal IR
+		"solar_absorptivity": 0.001   # Effectively transparent to solar
+	},
+	"O2": {
+		"name": "Oxygen",
+		"molar_mass": 0.031998,  # kg/mol
+		"specific_heat": 918.0,   # J/(kg*K) - Cp at ~300K
+		"thermal_absorptivity": 0.001, # Effectively transparent to thermal IR
+		"solar_absorptivity": 0.005   # Minor absorption in some bands, mostly transparent
+	},
+	"Ar": {
+		"name": "Argon",
+		"molar_mass": 0.039948,  # kg/mol
+		"specific_heat": 520.0,   # J/(kg*K) - Cp at ~300K
+		"thermal_absorptivity": 0.0,   # Transparent
+		"solar_absorptivity": 0.0    # Transparent
+	},
+	"CO2": {
+		"name": "Carbon Dioxide",
+		"molar_mass": 0.044009,  # kg/mol
+		"specific_heat": 844.0,   # J/(kg*K) - Cp at ~300K (varies notably with temp)
+		"thermal_absorptivity": 0.75,  # STRONG absorber in thermal IR (EFFECTIVE grey value)
+		"solar_absorptivity": 0.002   # Weak solar absorption
+	},
+	"H2O": {
+		"name": "Water Vapor",
+		"molar_mass": 0.018015,  # kg/mol
+		"specific_heat": 1864.0,  # J/(kg*K) - Cp for VAPOR at ~300K (varies, excludes latent heat)
+		"thermal_absorptivity": 0.85,  # VERY STRONG broadband absorber in thermal IR (EFFECTIVE grey value)
+		"solar_absorptivity": 0.01    # Minor solar absorption, increases in near-IR
+	},
+	"CH4": {
+		"name": "Methane",
+		"molar_mass": 0.016043,  # kg/mol
+		"specific_heat": 2220.0,  # J/(kg*K) - Cp at ~300K
+		"thermal_absorptivity": 0.70,  # STRONG absorber in specific thermal IR bands (EFFECTIVE grey value)
+		"solar_absorptivity": 0.002   # Weak solar absorption
+	},
+	"N2O": {
+		"name": "Nitrous Oxide",
+		"molar_mass": 0.044013,  # kg/mol
+		"specific_heat": 880.0,   # J/(kg*K) - Cp at ~300K
+		"thermal_absorptivity": 0.80,  # POTENT absorber in thermal IR (EFFECTIVE grey value)
+		"solar_absorptivity": 0.005   # Minor solar absorption
+	},
+	"O3": {
+		"name": "Ozone",
+		"molar_mass": 0.047997,  # kg/mol
+		"specific_heat": 800.0,   # J/(kg*K) - Cp approx (less common value)
+		"thermal_absorptivity": 0.15,  # Moderate thermal IR absorption in specific bands
+		"solar_absorptivity": 0.10    # STRONG UV absorber (solar spectrum), lower avg across full spectrum (EFFECTIVE grey value)
+	}
+	# Add other gases here if needed (e.g., He, H2 for gas giants, SO2 for volcanic)
+}
+
+static func get_gas_data(gas_formula: String) -> Dictionary:
+	if GAS_PROPERTIES.has(gas_formula):
+		return GAS_PROPERTIES[gas_formula]
+	else:
+		printerr("GasData: Gas formula '%s' not found." % gas_formula)
+		return {}
+
+static func get_all_gas_formulas() -> Array[String]:
+	var formulas: Array[String] = [] # Create an empty, explicitly typed Array[String]
+	for key in GAS_PROPERTIES.keys():
+		formulas.append(key) # Append each key (which is a String)
+	return formulas # Return the correctly typed array
+
+static func get_all_gas_names() -> Array[String]:
+	var names: Array[String] = []
+	for key in GAS_PROPERTIES:
+		names.append(GAS_PROPERTIES[key].get("name", key))
+	return names

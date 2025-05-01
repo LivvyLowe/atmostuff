@@ -1,0 +1,110 @@
+extends PanelContainer
+
+@onready var sim_manager = get_node("/root/SimulationManager")
+@onready var planet = get_node("/root/SimulationManager/Planet3D")
+
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	pass # Replace with function body.
+
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(delta: float) -> void:
+	$VBoxContainer/HBoxContainer2/Label2.text = str(sim_manager.sim_time)
+
+func set_pause_button(is_paused: bool):
+	$VBoxContainer/HBoxContainer/PauseCheck.set_pressed_no_signal(is_paused)
+
+func _on_time_step_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_time_step(value)
+
+func _on_day_length_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_day_length(value)
+	var maxtstep = value * 24 * 60 * 60 * 0.2
+	$VBoxContainer/TimeStepSpinBox.max_value = maxtstep
+
+func _on_obliquity_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_obliquity(value)
+
+func _on_semi_major_axis_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_semimajor_axis(value)
+	var new_period = sim_manager.kepler_period_from_mass(sim_manager.star_mass, value*sim_manager.ENGINE_METERS_PER_AU)
+	sim_manager.set_orbit_period(new_period)
+	$"VBoxContainer/TabContainer/Orbital Parameters/HBoxContainer4/Label2".text = str(new_period)
+	$"VBoxContainer/TabContainer/Star/HBoxContainer2/Label2".text = str(new_period)
+
+func _on_eccentricity_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_eccentricity(value)
+
+func _on_solstice_longitude_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_solstice_longitude(value)
+
+func _on_pause_check_toggled(toggled_on: bool) -> void:
+	sim_manager.sim_is_paused = toggled_on
+
+
+func _on_luminosity_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_luminosity(value)
+
+
+func _on_period_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_orbit_period(value)
+
+
+func _on_reset_button_pressed() -> void:
+	sim_manager.reset_sim()
+
+
+func _on_star_mass_spin_box_value_changed(value: float) -> void:
+	sim_manager.set_star_mass(value)
+	var new_period = sim_manager.kepler_period_from_mass(value, sim_manager.orbit_semimajor_axis)
+	sim_manager.set_orbit_period(new_period)
+	$"VBoxContainer/TabContainer/Orbital Parameters/HBoxContainer4/Label2".text = str(new_period)
+	$"VBoxContainer/TabContainer/Star/HBoxContainer2/Label2".text = str(new_period)
+
+
+func _on_planet_radius_spinner_value_changed(value: float) -> void:
+	planet.set_planet_size(planet.mass, value)
+	$"VBoxContainer/TabContainer/Planet/HBoxContainer3/Label2".text = str(planet.surface_gravity)
+
+
+func _on_planet_mass_spin_box_value_changed(value: float) -> void:
+	planet.set_planet_size(value, planet.radius)
+	$"VBoxContainer/TabContainer/Planet/HBoxContainer3/Label2".text = str(planet.surface_gravity)
+
+
+func _on_albedo_spinner_value_changed(value: float) -> void:
+	planet.global_surface_column_parameter_update(null, value)
+
+
+func _on_heat_capacity_value_changed(value: float) -> void:
+	planet.global_surface_column_parameter_update(null, null, null, null, value)
+
+
+func _on_conductivity_spinner_value_changed(value: float) -> void:
+	planet.global_surface_column_parameter_update(null, null, null, value)
+
+
+func _on_density_spinner_value_changed(value: float) -> void:
+	planet.global_surface_column_parameter_update(null, null, value)
+
+
+func _on_lat_cells_spinner_value_changed(value: float) -> void:
+	planet.lat_bands = value
+	planet.regen_planet()
+
+
+func _on_lon_cells_spinner_value_changed(value: float) -> void:
+	planet.lon_bands = value
+	planet.regen_planet()
+
+
+func _on_layers_spinner_value_changed(value: float) -> void:
+	planet.atmos_layers = value
+	planet.regen_planet()
+
+
+func _on_layer_thickness_spinner_value_changed(value: float) -> void:
+	planet.layer_height
+	planet.regen_planet()

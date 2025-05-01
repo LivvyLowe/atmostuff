@@ -1,0 +1,17 @@
+class_name AtmosLayer
+extends RefCounted
+
+var altitude_range := Vector2(0, 1000)  # e.g., 0-1 km
+var temperature: float = 288.0
+var pressure: float = 1.0             # relative to 1 atm or in bar
+var composition: Dictionary = {
+	"N2": 0.78,
+	"O2": 0.21,
+	"CO2": 0.01
+}
+var wind_vector := Vector3.ZERO
+var above_layer = null
+var below_layer = null
+
+func simulate_layer(dt):
+	pass

@@ -1,0 +1,88 @@
+[gd_scene load_steps=17 format=3 uid="uid://ddlgbhg3fn1mc"]
+
+[ext_resource type="Script" path="res://scripts/SimulationManager.gd" id="1_48t16"]
+[ext_resource type="Texture2D" uid="uid://dpknw4q2gpyyq" path="res://eso0932a.jpg" id="2_bj6da"]
+[ext_resource type="Script" path="res://scripts/Planet3D.gd" id="2_k3j0v"]
+[ext_resource type="PackedScene" uid="uid://ccihgeyd4drjs" path="res://grid_cell_marker.tscn" id="2_ywkef"]
+[ext_resource type="Texture2D" uid="uid://dowff3srw35hj" path="res://IMG_4669.JPG" id="3_c6abb"]
+[ext_resource type="Script" path="res://scripts/PlanetCam.gd" id="4_qstc2"]
+[ext_resource type="Script" path="res://scripts/Star.gd" id="5_ds2co"]
+[ext_resource type="Script" path="res://scripts/ColumnsGrid3D.gd" id="5_ivh7t"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_frs3o"]
+albedo_texture = ExtResource("3_c6abb")
+
+[sub_resource type="SphereMesh" id="SphereMesh_plq2w"]
+material = SubResource("StandardMaterial3D_frs3o")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_td06t"]
+emission_enabled = true
+emission = Color(1, 1, 1, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_dwimn"]
+material = SubResource("StandardMaterial3D_td06t")
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_61yia"]
+panorama = ExtResource("2_bj6da")
+energy_multiplier = 0.9
+
+[sub_resource type="Sky" id="Sky_a33tj"]
+sky_material = SubResource("PanoramaSkyMaterial_61yia")
+process_mode = 3
+
+[sub_resource type="Environment" id="Environment_7pxy8"]
+background_mode = 2
+sky = SubResource("Sky_a33tj")
+ambient_light_source = 3
+ambient_light_sky_contribution = 0.0
+reflected_light_source = 2
+glow_enabled = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ro0do"]
+shading_mode = 0
+
+[node name="SimulationManager" type="Node3D"]
+script = ExtResource("1_48t16")
+
+[node name="GridCellMarker" parent="." instance=ExtResource("2_ywkef")]
+
+[node name="PlanetCam" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
+script = ExtResource("4_qstc2")
+
+[node name="Camera3D" type="Camera3D" parent="PlanetCam"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+
+[node name="Planet3D" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
+rotation_order = 5
+script = ExtResource("2_k3j0v")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Planet3D"]
+mesh = SubResource("SphereMesh_plq2w")
+skeleton = NodePath("../..")
+
+[node name="RayCast3D" type="RayCast3D" parent="Planet3D/MeshInstance3D"]
+target_position = Vector3(0, 2, 0)
+debug_shape_custom_color = Color(1, 0, 0, 1)
+
+[node name="SectorGrid" type="Node3D" parent="Planet3D/MeshInstance3D"]
+script = ExtResource("5_ivh7t")
+
+[node name="Star" type="Node3D" parent="."]
+script = ExtResource("5_ds2co")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Star"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, 0)
+light_cull_mask = 4294967289
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Star"]
+layers = 4
+mesh = SubResource("SphereMesh_dwimn")
+
+[node name="test_environment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_7pxy8")
+
+[node name="OrbitMesh" type="MeshInstance3D" parent="."]
+material_override = SubResource("StandardMaterial3D_ro0do")

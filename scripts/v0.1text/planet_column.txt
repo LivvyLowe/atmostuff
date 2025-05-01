@@ -1,0 +1,111 @@
+class_name Column
+extends RefCounted
+
+var lat_index: int
+var lon_index: int
+var linked_mesh: MeshInstance3D
+var linked_area: Area3D
+var center_normal: Vector3
+
+var planet: Node3D
+var incoming_flux = 1361.0
+var star_pos = Vector3(0,0,0)
+var layers: Array[AtmosLayer]
+
+
+const SIGMA = 5.670374419e-8
+
+#surface stuff
+var surface_area: float = 1.5
+var surface_temp: float = 100.0
+var surface_albedo: float = 0.088
+var surface_density: float = 2000
+var surface_thermal_conductivity = 0.025
+
+var surface_heat_capacity: float = 850
+var surface_emissivity: float = 0.95
+
+func get_num_layers():
+	return layers.size()
+
+func get_layer(i: int) -> AtmosLayer:
+	if i >= 0 and i < layers.size():
+		return layers[i]
+	return null
+
+# Helper method: Find surface layer quickly (assuming layer 0 is surface)
+func get_surface_layer() -> AtmosLayer:
+	return get_layer(0)
+
+# Another helper: top layer
+func get_top_layer() -> AtmosLayer:
+	return get_layer(layers.size() - 1)
+
+func simulate_column(dt):
+	if layers.size() > 0:
+		for layer in layers:
+			layer.simulate_layer(dt)
+			
+	
+	
+	linked_mesh.material_override.albedo_color = temp_to_color(surface_temp)
+	incoming_flux = current_flux_angled()
+	
+	
+	
+	#Temperature Update Eulerian
+	var incoming = (1.0 - surface_albedo) * incoming_flux #W/m^2
+	var outgoing = surface_emissivity * SIGMA * pow(surface_temp, 4) #W/m^2
+	
+	var net_flux = (incoming - outgoing)*surface_area
+	var density = surface_density
+	
+	var freq = 2*PI/(planet.sim_manager.day_length)
+	var thermal_diffusivity = surface_thermal_conductivity/(surface_density*surface_heat_capacity)
+	var thermal_skin_depth = sqrt(2*thermal_diffusivity * (1/freq))
+	
+	var depth = thermal_skin_depth
+	var mass = density*surface_area*depth
+	
+	var delta_T = (net_flux * dt) / (surface_heat_capacity * mass)
+	surface_temp += delta_T
+
+func temp_to_color(temp: float):
+	var t_min = 20.0
+	var t_max = 1000.0 
+	var t_mid = 300.0
+	
+	var a = 0.5
+	var c1 = Color(0.6,0,1,a)
+	var c2 = Color(0,1,0,a)
+	var c3 = Color(1,0,0,a)
+	
+	temp = clamp(temp,20.0, 1000.0)
+	
+	var final_color: Color
+	
+	if temp <= t_mid:
+		# Segment 1:  t_min..t_mid -> c1..c2
+		var ratio = (temp - t_min) / (t_mid - t_min)
+		final_color = c1.lerp(c2, ratio)
+	else:
+		# Segment 2:  t_mid..t_max -> c2..c3
+		var ratio = (temp - t_mid) / (t_max - t_mid)
+		final_color = c2.lerp(c3, ratio)
+	
+	return final_color
+
+func current_flux_angled() -> float:
+	
+	var global_center = planet.global_transform * center_normal
+	var normal = (global_center - planet.global_transform.origin).normalized()
+	var star_dir = (star_pos - planet.global_transform.origin).normalized()
+	var cos_incidence = normal.dot(star_dir)
+	
+	
+	if cos_incidence > 0.0:
+		return planet.global_flux * cos_incidence
+	else:
+		return  0.0
+	
+	

@@ -1,0 +1,466 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfgt6w5jbellb"]
+
+[ext_resource type="Script" path="res://scripts/SettingsMenu.gd" id="1_pub74"]
+
+[node name="SettingsMenu" type="PanelContainer"]
+custom_minimum_size = Vector2(300, 0)
+offset_right = 361.0
+offset_bottom = 465.0
+size_flags_vertical = 10
+script = ExtResource("1_pub74")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 2
+scroll_vertical = 162
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ScrollContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "Sim Time:"
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "0"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ResetButton" type="Button" parent="ScrollContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Reset Sim"
+
+[node name="PauseCheck" type="CheckBox" parent="ScrollContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+button_pressed = true
+text = "Pause Sim"
+
+[node name="HSeparator" type="HSeparator" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+text = "Time Step (sec/sec)"
+
+[node name="TimeStepSpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+min_value = 60.0
+max_value = 1e+14
+value = 17280.0
+
+[node name="HSeparator2" type="HSeparator" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="TabContainer" type="TabContainer" parent="ScrollContainer/VBoxContainer"]
+layout_mode = 2
+current_tab = 3
+
+[node name="Orbital Parameters" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+text = "Planet Rotation"
+
+[node name="DayLengthSpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+max_value = 99999.0
+step = 0.01
+value = 1.0
+suffix = "Earth Days"
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+text = "Obliquity"
+
+[node name="ObliquitySpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+step = 0.01
+suffix = "°"
+
+[node name="SemiMajorAxisContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+
+[node name="Label3" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/SemiMajorAxisContainer"]
+layout_mode = 2
+text = "Semi-major Axis"
+
+[node name="SemiMajorAxisSpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/SemiMajorAxisContainer"]
+layout_mode = 2
+max_value = 1000.0
+step = 0.01
+value = 1.0
+suffix = "AU"
+
+[node name="EccentricityContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+
+[node name="Label4" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/EccentricityContainer"]
+layout_mode = 2
+text = "Eccentricity"
+
+[node name="EccentricitySpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/EccentricityContainer"]
+layout_mode = 2
+max_value = 0.99
+step = 0.01
+
+[node name="SolsticeLongitudeContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+
+[node name="Label5" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/SolsticeLongitudeContainer"]
+layout_mode = 2
+text = "Longitude of Solstice"
+
+[node name="SolsticeLongitudeSpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/SolsticeLongitudeContainer"]
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+step = 0.1
+suffix = "°"
+
+[node name="HSeparator" type="HSeparator" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+
+[node name="PeriodContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/PeriodContainer"]
+layout_mode = 2
+text = "Orbital Period: "
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/PeriodContainer"]
+layout_mode = 2
+text = "365.25"
+
+[node name="Label3" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/PeriodContainer"]
+layout_mode = 2
+text = "Earth Days"
+
+[node name="Star" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="LuminosityContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Star"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Star/LuminosityContainer"]
+layout_mode = 2
+text = "Luminosity"
+
+[node name="LuminositySpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Star/LuminosityContainer"]
+layout_mode = 2
+min_value = 0.002
+max_value = 20000.0
+step = 0.001
+value = 1.0
+exp_edit = true
+suffix = "L☉"
+
+[node name="StarMassContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Star"]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Star/StarMassContainer"]
+layout_mode = 2
+text = "Stellar Mass
+"
+
+[node name="StarMassSpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Star/StarMassContainer"]
+layout_mode = 2
+min_value = 0.1
+max_value = 20000.0
+step = 0.01
+value = 1.0
+exp_edit = true
+suffix = "M☉"
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Star"]
+layout_mode = 2
+text = "(changing this changes orbital period!)"
+
+[node name="PeriodContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Star"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Star/PeriodContainer"]
+layout_mode = 2
+text = "Orbital Period: "
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Star/PeriodContainer"]
+layout_mode = 2
+text = "365.25"
+
+[node name="Label3" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Star/PeriodContainer"]
+layout_mode = 2
+text = "Earth Days"
+
+[node name="Planet" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="RadiusContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/RadiusContainer"]
+layout_mode = 2
+text = "Radius"
+
+[node name="PlanetRadiusSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/RadiusContainer"]
+layout_mode = 2
+min_value = 0.01
+max_value = 3.5
+step = 0.01
+value = 1.0
+suffix = "R🜨"
+
+[node name="MassContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/MassContainer"]
+layout_mode = 2
+text = "Planet Mass"
+
+[node name="PlanetMassSpinBox" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/MassContainer"]
+layout_mode = 2
+min_value = 0.01
+max_value = 30.0
+step = 0.01
+value = 1.0
+suffix = "M🜨"
+
+[node name="GravityLabel" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+text = "1.0"
+
+[node name="HSeparator" type="HSeparator" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="LatCellsContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/LatCellsContainer"]
+layout_mode = 2
+text = "Latitudinal cells:"
+
+[node name="LatCellsSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/LatCellsContainer"]
+layout_mode = 2
+min_value = 2.0
+value = 12.0
+
+[node name="LonCellsContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/LonCellsContainer"]
+layout_mode = 2
+text = "Longitudinal cells:"
+
+[node name="LonCellsSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/LonCellsContainer"]
+layout_mode = 2
+min_value = 2.0
+value = 12.0
+
+[node name="HSeparator2" type="HSeparator" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+text = "Global Surface Parameters"
+
+[node name="AlbedoContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/AlbedoContainer"]
+layout_mode = 2
+text = "Albedo"
+
+[node name="AlbedoSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/AlbedoContainer"]
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.3
+
+[node name="DensityContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/DensityContainer"]
+layout_mode = 2
+text = "Density"
+
+[node name="DensitySpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/DensityContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 10000.0
+value = 2700.0
+suffix = "kg/m³"
+
+[node name="ConductivityContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/ConductivityContainer"]
+layout_mode = 2
+text = "Thermal Conductivity"
+
+[node name="ConductivitySpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/ConductivityContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1000.0
+step = 0.01
+value = 2.5
+suffix = "W/m·K"
+
+[node name="HeatCapacityContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Planet"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/HeatCapacityContainer"]
+layout_mode = 2
+text = "Surface Specific Heat Capacity"
+
+[node name="HeatCapacitySpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/HeatCapacityContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 6000.0
+step = 0.1
+value = 700.0
+suffix = "J/kg·K"
+
+[node name="Atmosphere" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="LayersContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="LayersSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/LayersContainer"]
+layout_mode = 2
+max_value = 20.0
+value = 5.0
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/LayersContainer"]
+layout_mode = 2
+text = "Atmosphere Layers
+"
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+text = "Each atmosphere layer is an equal mass parcel
+(at init)"
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="InitTempSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer3"]
+layout_mode = 2
+max_value = 2000.0
+step = 0.1
+value = 288.0
+suffix = "K"
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer3"]
+layout_mode = 2
+text = "Inital Temperature"
+
+[node name="PressureContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="PressureSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/PressureContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1e+07
+value = 101325.0
+suffix = "Pa"
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/PressureContainer"]
+layout_mode = 2
+text = "Inital Surface Pressure"
+
+[node name="LapseRateContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="InitLapseSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/LapseRateContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -0.2
+max_value = 0.2
+step = 0.0001
+value = -0.0065
+suffix = "K/m"
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/LapseRateContainer"]
+layout_mode = 2
+text = "Initial lapse rate"
+
+[node name="HSeparator" type="HSeparator" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+text = "Parameterization Constants"
+
+[node name="KMassContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="KMassSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/KMassContainer"]
+layout_mode = 2
+step = 0.1
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/KMassContainer"]
+layout_mode = 2
+text = "κ Mass Scaling"
+
+[node name="Label3" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "Overall strength of the greenhouse effect;
+higher values mean stronger absorption/emission per unit mass"
+autowrap_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[node name="KheattransferSpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer"]
+layout_mode = 2
+step = 0.1
+
+[node name="Label" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer"]
+layout_mode = 2
+text = "κ Heat Transfer"
+
+[node name="Label4" type="Label" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "Efficiency of direct heat exchange between the surface and Layer 0. Higher values mean stronger conductive coupling, causing Layer 0's temperature to track the surface temperature more closely and have a larger diurnal temperature range."
+autowrap_mode = 2
+
+[node name="GasCompositionContainer" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer/Atmosphere"]
+layout_mode = 2
+
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/HBoxContainer/ResetButton" to="." method="_on_reset_button_pressed"]
+[connection signal="toggled" from="ScrollContainer/VBoxContainer/HBoxContainer/PauseCheck" to="." method="_on_pause_check_toggled"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TimeStepSpinBox" to="." method="_on_time_step_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/DayLengthSpinBox" to="." method="_on_day_length_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/ObliquitySpinBox" to="." method="_on_obliquity_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/SemiMajorAxisContainer/SemiMajorAxisSpinBox" to="." method="_on_semi_major_axis_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/EccentricityContainer/EccentricitySpinBox" to="." method="_on_eccentricity_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Orbital Parameters/SolsticeLongitudeContainer/SolsticeLongitudeSpinBox" to="." method="_on_solstice_longitude_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Star/LuminosityContainer/LuminositySpinBox" to="." method="_on_luminosity_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Star/StarMassContainer/StarMassSpinBox" to="." method="_on_star_mass_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/RadiusContainer/PlanetRadiusSpinner" to="." method="_on_planet_radius_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/MassContainer/PlanetMassSpinBox" to="." method="_on_planet_mass_spin_box_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/LatCellsContainer/LatCellsSpinner" to="." method="_on_lat_cells_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/LonCellsContainer/LonCellsSpinner" to="." method="_on_lon_cells_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/AlbedoContainer/AlbedoSpinner" to="." method="_on_albedo_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/DensityContainer/DensitySpinner" to="." method="_on_density_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/ConductivityContainer/ConductivitySpinner" to="." method="_on_conductivity_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/HeatCapacityContainer/HeatCapacitySpinner" to="." method="_on_heat_capacity_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/LayersContainer/LayersSpinner" to="." method="_on_layers_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/KMassContainer/KMassSpinner" to="." method="_on_k_mass_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer/KheattransferSpinner" to="." method="_on_kheattransfer_spinner_value_changed"]

@@ -1,0 +1,225 @@
+# atmos_layer.gd
+class_name AtmosLayer
+extends RefCounted
+
+# --- Constants ---
+const R_IDEAL_GAS = 8.314462618         # J / (mol * K) - Universal Gas Constant
+const STANDARD_PRESSURE = 101325.0       # Pa - Reference pressure (e.g., Earth sea level)
+const STEFAN_BOLTZMANN = 5.670374419e-8 # W / (m^2 * K^4)
+const REFERENCE_DENSITY = 1.225          # kg/m^3 (Reference for scaling absorptivity)
+const REFERENCE_THICKNESS = 1000.0       # m (Reference for scaling absorptivity)
+# Tuning constant for absorptivity scaling (Adjust based on simulation results)
+const OPTICAL_DEPTH_SCALING_K = 5.0
+
+# --- Core Physical Properties ---
+var altitude_range := Vector2(0, 1000)   # Min/Max altitude (m) for this layer
+var layer_thickness: float = 1000.0     # m - Calculated from altitude_range
+var temperature: float = 288.0         # Kelvin
+var pressure: float = STANDARD_PRESSURE  # Pascals (Total pressure of the gas mixture)
+# Composition stored as mole fractions { "GasFormula": fraction, ... }
+var composition: Dictionary = { "N2": 1.0 }
+var wind_vector := Vector3.ZERO        # m/s (Placeholder for future dynamics)
+
+# --- Links to other layers ---
+var column: Column = null
+var above_layer: AtmosLayer = null
+var below_layer: AtmosLayer = null
+
+# --- Calculated/Derived Properties (Updated via functions) ---
+# Properties PER UNIT AREA or intrinsic properties
+var density: float = 1.225             # kg/m^3
+var effective_molar_mass: float = 0.02897 # kg/mol (Approx air)
+var effective_specific_heat: float = 1005.0 # J/(kg*K) (Approx air Cp)
+var effective_thermal_absorptivity: float = 0.1 # Effective grey-gas value (0-1), scaled
+var effective_solar_absorptivity: float = 0.01  # Effective grey-gas value (0-1), scaled
+# <<< KEY CHANGE: Heat capacity PER UNIT AREA >>>
+var column_heat_capacity_per_area: float = 1.23e6 # J / (K * m^2)
+
+# --- Removed Properties (No longer needed for per-unit-area calc) ---
+# var layer_area: float = 1.0          # REMOVED
+# var mass: float = 1225.0              # REMOVED
+# var heat_capacity: float = 1.23e6      # REMOVED (Replaced by per-area version)
+
+
+# --- Initialization ---
+func _init():
+	# Pre-calculate thickness on creation
+	layer_thickness = altitude_range.y - altitude_range.x
+	if layer_thickness <= 1e-6: # Check against small epsilon
+		printerr("AtmosLayer: Invalid altitude_range resulting in near-zero or negative thickness.")
+		layer_thickness = 1.0 # Set a minimum thickness
+
+# Called by the Column/Planet script after creating the layer instance.
+# <<< CHANGE: Removed 'area' parameter >>>
+func initialize_layer(initial_comp: Dictionary, initial_temp: float, initial_press: float, alt_range: Vector2):
+	# layer_area = area # REMOVED
+	altitude_range = alt_range
+	layer_thickness = altitude_range.y - altitude_range.x
+	if layer_thickness <= 1e-6: # Check against small epsilon
+		printerr("AtmosLayer: Invalid altitude_range provided during initialization.")
+		layer_thickness = 1.0
+
+	temperature = initial_temp
+	pressure = initial_press
+	# Use setter to trigger initial calculations based on composition
+	set_composition(initial_comp)
+
+
+# --- Update Functions ---
+
+# Call this whenever the composition dictionary changes.
+func set_composition(new_composition: Dictionary):
+	composition = new_composition.duplicate(true) # Deep copy recommended for dictionaries
+	# --- Normalize fractions ---
+	var total_fraction = 0.0
+	for gas in composition:
+		if typeof(composition[gas]) in [TYPE_INT, TYPE_FLOAT]:
+			total_fraction += composition[gas]
+		else:
+			printerr("AtmosLayer: Non-numeric value found in composition dict for gas '%s'" % gas)
+
+	if total_fraction > 1e-6: # Avoid division by zero if empty/invalid
+		for gas in composition:
+			if typeof(composition[gas]) in [TYPE_INT, TYPE_FLOAT]:
+				composition[gas] /= total_fraction
+	else:
+		printerr("AtmosLayer: Composition dictionary is empty or sums to zero. Defaulting to N2.")
+		composition = {"N2": 1.0} # Default to Nitrogen to prevent errors
+
+	# --- Recalculate properties dependent on composition ---
+	effective_molar_mass = _calculate_effective_molar_mass()
+	# Specific heat also depends on composition (via mass fractions)
+	# Call update_thermodynamics which calculates specific heat and then column heat capacity per area
+	update_thermodynamics()
+
+
+# Call this whenever temperature or pressure changes significantly.
+# This updates density, specific heat, absorptivities, and column heat capacity per area.
+func update_thermodynamics():
+	density = _calculate_density()
+	effective_specific_heat = _calculate_effective_specific_heat() # Cp in J/(kg*K)
+
+	# --- Calculate Column Heat Capacity per Area ---
+	var column_mass_density = density * layer_thickness # kg / m^2
+	# Column Heat Capacity per Area = (Mass per Area) * Specific Heat
+	column_heat_capacity_per_area = column_mass_density * effective_specific_heat # J / (K * m^2)
+	var inertia_reduction_factor = 0.03
+	# Ensure it's not negative or extremely small if inputs were weird
+	column_heat_capacity_per_area = max(column_heat_capacity_per_area, 1e-3)*inertia_reduction_factor # Set a small minimum
+
+	# --- Recalculate scaled absorptivities ---
+	effective_thermal_absorptivity = _calculate_scaled_absorptivity("thermal")
+	effective_solar_absorptivity = _calculate_scaled_absorptivity("solar")
+
+
+# --- Energy Balance Helper Functions ---
+
+# Returns the total thermal radiative flux emitted by this layer (W/m^2)
+func get_thermal_emission_flux() -> float:
+	if temperature < 0.0:
+		return 0.0
+	# Assuming Kirchhoff's Law: Emissivity = Absorptivity for thermal radiation
+	var emissivity = effective_thermal_absorptivity
+	return emissivity * STEFAN_BOLTZMANN * pow(temperature, 4)
+
+# Calculates how much of an incoming flux is absorbed by this layer (W/m^2)
+func get_absorbed_flux(incoming_flux: float, type: String) -> float:
+	var absorptivity = 0.0
+	if type == "solar":
+		absorptivity = effective_solar_absorptivity
+	elif type == "thermal":
+		absorptivity = effective_thermal_absorptivity
+	else:
+		printerr("AtmosLayer: Unknown flux type '%s' for absorption calc." % type)
+		return 0.0
+
+	return incoming_flux * absorptivity
+
+
+# --- Calculation Functions ---
+
+# Calculates density using the Ideal Gas Law for mixtures: rho = P * M / (R * T)
+func _calculate_density() -> float:
+	if temperature < 1.0:
+		# printerr("AtmosLayer: Temperature near zero (%f K), density calculation unstable." % temperature)
+		temperature = 1.0 # Clamp temperature to avoid zero division
+	if effective_molar_mass < 1e-9:
+		printerr("AtmosLayer: Effective molar mass is near zero.")
+		return 1e-6 # Return small default density
+
+	return max(0.0, (pressure * effective_molar_mass) / (R_IDEAL_GAS * temperature))
+
+
+# Calculates the average molar mass based on mole fractions.
+func _calculate_effective_molar_mass() -> float:
+	var total_molar_mass = 0.0
+	for gas in composition:
+		var gas_data = GasData.get_gas_data(gas)
+		if not gas_data.is_empty():
+			total_molar_mass += composition[gas] * gas_data.molar_mass
+		else:
+			# Warning printed by GasData.get_gas_data
+			pass
+	return max(total_molar_mass, 1e-9) # Avoid zero molar mass
+
+
+# Calculates the effective specific heat capacity (Cp) based on MASS fractions.
+func _calculate_effective_specific_heat() -> float:
+	var total_specific_heat = 0.0
+	var current_molar_mass = effective_molar_mass # Should be calculated just before this
+	if current_molar_mass < 1e-9:
+		printerr("AtmosLayer: Cannot calculate specific heat, effective molar mass is zero.")
+		return GasData.get_gas_data("N2").specific_heat # Return a default
+
+	var total_mass_fraction_check = 0.0 # For validation
+	# Convert mole fractions to mass fractions
+	for gas in composition:
+		var gas_data = GasData.get_gas_data(gas)
+		if not gas_data.is_empty():
+			var mole_fraction = composition[gas]
+			# Mass Fraction = (Mole Fraction * Molar Mass of Gas) / Average Molar Mass of Mixture
+			var mass_fraction = (mole_fraction * gas_data.molar_mass) / current_molar_mass
+			total_specific_heat += mass_fraction * gas_data.specific_heat
+			total_mass_fraction_check += mass_fraction
+		# else: Warning printed by GasData
+
+	# Simple check if mass fractions sum reasonably close to 1
+	if abs(total_mass_fraction_check - 1.0) > 0.01:
+		# This might happen slightly due to precision, only warn if significant
+		# printerr("AtmosLayer: Mass fractions sum to %f, expected ~1.0" % total_mass_fraction_check)
+		pass
+
+	return max(total_specific_heat, 1.0) # Ensure specific heat is positive
+
+
+# Calculates the effective absorptivity (thermal or solar) using exponential saturation
+func _calculate_scaled_absorptivity(type: String) -> float:
+	var base_absorptivity = 0.0
+	var property_key = "thermal_absorptivity" if type == "thermal" else "solar_absorptivity"
+
+	# 1. Calculate weighted average based on mole fraction (same as before)
+	for gas in composition:
+		var gas_data = GasData.get_gas_data(gas)
+		if not gas_data.is_empty():
+			base_absorptivity += composition[gas] * gas_data.get(property_key, 0.0)
+
+	if base_absorptivity <= 1e-6:
+		return 0.0
+
+	# --- <<< MODIFIED SCALING START >>> ---
+	# 2. Calculate scaling factor based on pressure relative to standard pressure
+	#    Ensures pressure is positive
+	var current_pressure = max(pressure, 1e-3) # Use current layer pressure
+	var pressure_scale_factor = current_pressure / STANDARD_PRESSURE
+
+	# 3. Calculate optical depth proxy based on base absorptivity and pressure scaling
+	#    This assumes optical depth scales linearly with pressure (a simplification)
+	var tau_proxy = base_absorptivity * pressure_scale_factor
+	# --- <<< MODIFIED SCALING END >>> ---
+
+
+	# 4. Apply exponential saturation formula using the TUNING constant K
+	#    OPTICAL_DEPTH_SCALING_K allows adjusting the overall strength
+	var effective_absorptivity = 1.0 - exp(-OPTICAL_DEPTH_SCALING_K * tau_proxy)
+
+	return clamp(effective_absorptivity, 0.0, 1.0)
