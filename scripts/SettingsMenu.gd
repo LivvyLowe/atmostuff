@@ -244,7 +244,7 @@ func _on_time_step_spin_box_value_changed(value: float) -> void:
 func _on_day_length_spin_box_value_changed(value: float) -> void:
 	sim_manager.set_day_length(value) # set_day_length expects days input
 	# Optional: Adjust max time step based on new day length?
-	var max_step = value * sim_manager.SECONDS_IN_DAY * 0.1 # e.g., 10% of day length
+	var max_step = value * sim_manager.SECONDS_IN_DAY * 0.5 # e.g., 10% of day length
 	time_step_spinbox.max_value = max_step
 
 func _on_obliquity_spin_box_value_changed(value: float) -> void:
@@ -252,7 +252,7 @@ func _on_obliquity_spin_box_value_changed(value: float) -> void:
 
 func _on_semi_major_axis_spin_box_value_changed(value: float) -> void:
 	sim_manager.set_semimajor_axis(value) # Expects AU input
-	var new_period_seconds = sim_manager.kepler_period_from_mass(sim_manager.star_mass, sim_manager.orbit_semimajor_axis)
+	var new_period_seconds = sim_manager.kepler_period_from_mass(sim_manager.star_mass, sim_manager.orbit_semimajor_axis)*sim_manager.SECONDS_IN_DAY
 	sim_manager.orbit_period = new_period_seconds # Directly set the calculated period in seconds
 	_update_period_label()
 
@@ -270,20 +270,14 @@ func _on_luminosity_spin_box_value_changed(value: float) -> void:
 	# Recalculate planet flux immediately if needed, or let sim_manager handle it
 	sim_manager.update_planet_position(planet) # This recalculates flux
 
-# func _on_period_spin_box_value_changed(value: float) -> void:
-	# This seems redundant now as period is calculated from mass/axis
-	# sim_manager.set_orbit_period(value) # Expects days input? Convert to seconds
-	# sim_manager.orbit_period = value * sim_manager.SECONDS_IN_DAY
-	# _update_period_label()
-
 func _on_reset_button_pressed() -> void:
 	sim_manager.reset_sim()
 	# Maybe reset UI elements here too? Or let _ready handle it on scene reload?
 
 func _on_star_mass_spin_box_value_changed(value: float) -> void:
 	sim_manager.set_star_mass(value)
-	var new_period_seconds = sim_manager.kepler_period_from_mass(value, sim_manager.orbit_semimajor_axis)
-	sim_manager.orbit_period = new_period_seconds
+	var new_period_seconds = sim_manager.kepler_period_from_mass(sim_manager.star_mass, sim_manager.orbit_semimajor_axis)*sim_manager.SECONDS_IN_DAY
+	sim_manager.orbit_period = new_period_seconds # Directly set the calculated period in seconds
 	_update_period_label()
 
 func _on_planet_radius_spinner_value_changed(value: float) -> void:
@@ -342,3 +336,7 @@ func _on_kheattransfer_spinner_value_changed(value: float) -> void:
 
 func _on_k_mass_spinner_value_changed(value: float) -> void:
 	sim_manager.K_mass_scaling = value
+
+
+func _on_init_temp_spinner_value_changed(value: float) -> void:
+	planet.set_initial_surface_temp(value)

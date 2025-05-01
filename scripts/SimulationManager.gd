@@ -181,7 +181,10 @@ func reset_orbit():
 func kepler_period_from_mass(mass: float, a: float):
 	#4pi/g in sim units
 	var k = ((365.25)**2)/(ENGINE_METERS_PER_AU**3)
-	return sqrt((k/mass)*(a**3))
+	var t = sqrt((k/mass)*(a**3))
+	print(t)
+	return t
+
 
 
 func _unhandled_input(event):

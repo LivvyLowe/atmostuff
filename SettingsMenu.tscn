@@ -11,7 +11,7 @@ script = ExtResource("1_pub74")
 
 [node name="ScrollContainer" type="ScrollContainer" parent="."]
 layout_mode = 2
-scroll_vertical = 162
+scroll_vertical = 52
 
 [node name="VBoxContainer" type="VBoxContainer" parent="ScrollContainer"]
 layout_mode = 2
@@ -57,7 +57,7 @@ layout_mode = 2
 
 [node name="TabContainer" type="TabContainer" parent="ScrollContainer/VBoxContainer"]
 layout_mode = 2
-current_tab = 3
+current_tab = 2
 
 [node name="Orbital Parameters" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
 visible = false
@@ -202,7 +202,6 @@ layout_mode = 2
 text = "Earth Days"
 
 [node name="Planet" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
-visible = false
 layout_mode = 2
 metadata/_tab_index = 2
 
@@ -325,6 +324,7 @@ layout_mode = 2
 text = "Surface Specific Heat Capacity"
 
 [node name="HeatCapacitySpinner" type="SpinBox" parent="ScrollContainer/VBoxContainer/TabContainer/Planet/HeatCapacityContainer"]
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 6000.0
@@ -333,6 +333,7 @@ value = 700.0
 suffix = "J/kg·K"
 
 [node name="Atmosphere" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/TabContainer"]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 3
 
@@ -462,5 +463,6 @@ layout_mode = 2
 [connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/ConductivityContainer/ConductivitySpinner" to="." method="_on_conductivity_spinner_value_changed"]
 [connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Planet/HeatCapacityContainer/HeatCapacitySpinner" to="." method="_on_heat_capacity_value_changed"]
 [connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/LayersContainer/LayersSpinner" to="." method="_on_layers_spinner_value_changed"]
+[connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer3/InitTempSpinner" to="." method="_on_init_temp_spinner_value_changed"]
 [connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/KMassContainer/KMassSpinner" to="." method="_on_k_mass_spinner_value_changed"]
 [connection signal="value_changed" from="ScrollContainer/VBoxContainer/TabContainer/Atmosphere/HBoxContainer/KheattransferSpinner" to="." method="_on_kheattransfer_spinner_value_changed"]
